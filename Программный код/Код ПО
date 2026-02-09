@@ -1,1 +1,90 @@
+#include <Servo.h>
+
+Servo wheelL, wheelR, servoTask, servo180, servoNew;
+
+const int STOP_L = 1560;
+const int STOP_R = 95; 
+
+const int L_TRIG = 2;  const int L_ECHO = 4;  
+const int R_TRIG = 7;  const int R_ECHO = 8;  
+const int U_TRIG = 11; const int U_ECHO = 12; 
+
+unsigned long lastDistTime = 0; 
+
+void setup() {
+  Serial.begin(9600);
+  
+  wheelL.attach(3);    
+  wheelR.attach(5);    
+  servoTask.attach(6); 
+  servo180.attach(9);  
+  servoNew.attach(10); 
+  
+  pinMode(L_TRIG, OUTPUT); pinMode(L_ECHO, INPUT);
+  pinMode(R_TRIG, OUTPUT); pinMode(R_ECHO, INPUT);
+  pinMode(U_TRIG, OUTPUT); pinMode(U_ECHO, INPUT);
+
+  stopAll();
+}
+
+int getDistance(int trig, int echo) {
+  digitalWrite(trig, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trig, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trig, LOW);
+  
+  long duration = pulseIn(echo, HIGH, 25000); 
+  if (duration == 0) return 400; 
+  return duration * 0.034 / 2;
+}
+
+void stopAll() {
+  wheelL.writeMicroseconds(STOP_L); 
+  wheelR.write(STOP_R);
+  servoTask.write(90);
+  servo180.write(90);
+  servoNew.write(90);
+}
+
+void loop() {
+  if (millis() - lastDistTime > 300) {
+    int distL = getDistance(L_TRIG, L_ECHO);
+    int distR = getDistance(R_TRIG, R_ECHO);
+    int distU = getDistance(U_TRIG, U_ECHO);
+
+    Serial.print("L:"); Serial.print(distL);
+    Serial.print(" R:"); Serial.print(distR);
+    Serial.print(" U:"); Serial.println(distU);
+    
+    lastDistTime = millis();
+  }
+
+  if (Serial.available() > 0) {
+    char cmd = Serial.read();
+    switch (cmd) {
+      case 'F': wheelL.writeMicroseconds(2400); wheelR.write(0);   break; 
+      case 'B': wheelL.writeMicroseconds(544);   wheelR.write(180); break; 
+      case 'L': wheelL.writeMicroseconds(544);   wheelR.write(0);   break; 
+      case 'R': wheelL.writeMicroseconds(2400); wheelR.write(180); break; 
+
+      case 'f': case 'b': case 'l': case 'r': case 'S':
+        wheelL.writeMicroseconds(STOP_L); wheelR.write(STOP_R); 
+        break; 
+
+      case 'W': servoTask.write(180); break; 
+      case 'X': servoTask.write(0);   break; 
+      case 'w': case 'x': servoTask.write(90); break;
+
+      case 'D': servo180.write(180); break; 
+      case 'A': servo180.write(0);   break; 
+      case 'd': case 'a': servo180.write(90); break;
+      
+      case 'U': servoNew.write(180); break; 
+      case 'u': servoNew.write(0);   break;
+      
+      case 'T': stopAll(); break;
+    }
+  }
+}
 
